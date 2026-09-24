@@ -232,3 +232,17 @@ jobs:
 
       - name: Esperar a que la actualizacion termine
         run: aws lambda wait function-updated --function-name inf384-lab3
+        
+      - name: Construir y publicar la imagen
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          provenance: false
+          sbom: false
+          tags: |
+            ${{ steps.ecr-login.outputs.registry }}/inf384-lab3:${{ steps.sha.outputs.short }}
+            ${{ steps.ecr-login.outputs.registry }}/inf384-lab3:prd
+          labels: |
+            org.opencontainers.image.title=inf384-lab3
