@@ -24,3 +24,4 @@ RUN npx esbuild src/handler.js \
 FROM public.ecr.aws/lambda/nodejs:20 AS runtime
 COPY --from=build /build/dist/handler.js ${LAMBDA_TASK_ROOT}/
 CMD ["handler.handler"]
+#Test Funcional
