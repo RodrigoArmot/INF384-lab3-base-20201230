@@ -1,22 +1,26 @@
-# Dockerfile del repositorio base.
-# Contiene cinco malas practicas deliberadas. Cada una lleva su numero en la
-# linea anterior. Corregirlas es el bloque A1 de la guia del laboratorio.
+# defecto 1 corregido: version fija en vez de "latest", y nombre de etapa
+FROM public.ecr.aws/lambda/nodejs:20 AS build
 
-# defecto 1
-FROM public.ecr.aws/lambda/nodejs:latest
+WORKDIR /build
 
-WORKDIR /app
+# defecto 2 corregido: manifiestos primero, para aprovechar la cache de capas
+COPY package.json package-lock.json ./
 
-# defecto 2
+# defecto 3 corregido: instalacion reproducible desde el lockfile
+RUN npm ci
+
 COPY . .
 
-# defecto 3
-RUN npm install
+# defecto 4: eliminado, la credencial no debe hornearse en ninguna capa de la imagen
+# defecto 5: eliminado, esbuild no necesita vim ni procps-ng en la etapa de build
 
-# defecto 4
-ENV DB_PASSWORD=BD_PASS
+### NO TOCAR DE ACA EN ADELANTE, CONSIDEREN QUE EL WORKDIR DEBE SER /build
+RUN npx esbuild src/handler.js \
+      --bundle --platform=node --target=node20 \
+      --outfile=dist/handler.js
 
-# defecto 5
-RUN dnf install -y procps-ng vim && dnf clean all
-
-CMD ["src/handler.handler"]
+# Etapa final: recibe unicamente el artefacto empaquetado.
+# El arbol de node_modules se queda en la etapa anterior.
+FROM public.ecr.aws/lambda/nodejs:20 AS runtime
+COPY --from=build /build/dist/handler.js ${LAMBDA_TASK_ROOT}/
+CMD ["handler.handler"]
