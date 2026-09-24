@@ -110,17 +110,42 @@ jobs:
       # TODO: Regla 1, sobre acciones de destruccion sin autorizacion.
       # Falta el mecanismo de autorizacion humana antes de implementarla.
 
-  # TODO
-  # Aplicar el plan que produjo el job anterior, sin recalcularlo.
-  # Corre solo desde la rama principal y solo si la compuerta del plan paso.
-  # Condicion de detencion: el apply falla.
-  # Sustituir el paso centinela por la implementacion.
+      - name: Subir el plan guardado
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan
+          path: infra/tfplan
+          if-no-files-found: error
+
+  # Depende de plan. Aplica exactamente el plan descargado, sin recalcularlo.
   aplicar:
     needs: plan
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
-      - name: Sin implementar
-        run: |
-          echo "::error::El job 'aplicar' no esta implementado."
-          exit 1
+      - uses: actions/checkout@v4
+
+      - name: Configurar Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Credenciales temporales
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token:     ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: us-east-1
+
+      - name: Inicializar contra el backend remoto
+        working-directory: infra
+        run: terraform init -backend-config=backend.hcl
+
+      - name: Descargar el plan guardado
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan
+          path: infra
+
+      - name: Aplicar el plan guardado
+        working-directory: infra
+        run: terraform apply tfplan
