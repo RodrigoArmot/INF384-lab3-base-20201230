@@ -16,19 +16,31 @@ on:
 
 jobs:
 
-  # TODO
-  # Verificar la sintaxis y la integridad del codigo de infraestructura:
-  # formato, inicializacion contra el backend remoto y validacion.
-  # Condicion de detencion: cualquiera de las tres comprobaciones falla.
-  # La configuracion del backend no esta en el codigo: llega por archivo.
-  # Sustituir el paso centinela por la implementacion.
+  # Dos comprobaciones: inicializacion contra el backend remoto y validacion.
+  # Condicion de detencion: cualquiera de las dos falla.
   validar:
     runs-on: ubuntu-latest
     steps:
-      - name: Sin implementar
-        run: |
-          echo "::error::El job 'validar' no esta implementado."
-          exit 1
+      - uses: actions/checkout@v4
+
+      - name: Configurar Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Credenciales temporales
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token:     ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: us-east-1
+
+      - name: Inicializar contra el backend remoto
+        working-directory: infra
+        run: terraform init -backend-config=backend.hcl
+
+      - name: Validar
+        working-directory: infra
+        run: terraform validate
 
   # TODO
   # Analizar el codigo declarado contra politicas de infraestructura.
